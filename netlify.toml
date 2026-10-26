@@ -1,0 +1,8 @@
+[build]
+  base = "."
+  command = "pnpm run typecheck && pnpm --filter @workspace/alfavogue run build"
+  publish = "artifacts/alfavogue/dist/public"
+
+[build.environment]
+  BASE_PATH = "/"
+  PORT = "8888"
