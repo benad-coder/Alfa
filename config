@@ -1,0 +1,25 @@
+[core]
+	repositoryformatversion = 0
+	filemode = true
+	bare = false
+	logallrefupdates = true
+[remote "gitsafe-backup"]
+	url = git://gitsafe:5418/backup.git
+	fetch = +refs/heads/*:refs/remotes/gitsafe-backup/*
+	lfsurl = http://gitsafe:5419
+[lfs "http://gitsafe:5419"]
+	locksverify = false
+[remote "origin"]
+	url = https://github.com/benad-coder/Vogue-Fashion-Hub
+	fetch = +refs/heads/*:refs/remotes/origin/*
+[lfs "https://github.com/benad-coder/Vogue-Fashion-Hub.git/info/lfs"]
+	access = basic
+[branch "main"]
+	remote = origin
+	merge = refs/heads/main
+[remote "subrepl-pug2aeqj"]
+	url = git+ssh://git@ssh.picard.replit.dev:/home/runner/workspace
+	fetch = +refs/heads/*:refs/remotes/subrepl-pug2aeqj/*
+	lfsurl = ssh://git@ssh.picard.replit.dev/home/runner/workspace
+[lfs]
+	repositoryformatversion = 0

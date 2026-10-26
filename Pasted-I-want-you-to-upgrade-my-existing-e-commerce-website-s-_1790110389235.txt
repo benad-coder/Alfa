@@ -1,0 +1,388 @@
+I want you to upgrade my existing e-commerce website's Add to Cart, Checkout, Payment, and Order Confirmation system.
+
+IMPORTANT:
+Do NOT redesign or break the existing website. Keep the current UI, styling, products, cart, checkout flow, and navigation unless changes are necessary for this feature.
+
+FEATURE I NEED:
+
+When a customer adds products to the cart and proceeds to checkout:
+
+1. CUSTOMER CHECKOUT
+- Customer reviews their cart.
+- Customer enters:
+  - Full name
+  - Email address
+  - Phone number
+  - Delivery address
+  - Any other information already required by the existing checkout.
+- Display the complete order summary:
+  - Products
+  - Quantities
+  - Individual prices
+  - Subtotal
+  - Delivery fee (if applicable)
+  - Total amount
+
+2. PAYMENT
+- Connect the existing payment system already used by the website.
+- DO NOT mark an order as "Paid" simply because the customer clicks the payment button.
+- The order must only be marked as "Paid" after the payment provider confirms successful payment.
+- Use the payment provider's webhook/payment verification mechanism where available.
+- Make sure payment verification happens securely on the server/backend.
+
+3. AFTER SUCCESSFUL PAYMENT
+Once payment has been successfully verified:
+
+Create an order record containing at least:
+
+- Order ID
+- Customer name
+- Customer email
+- Customer phone
+- Delivery address
+- Products ordered
+- Quantities
+- Total amount
+- Payment status
+- Order status
+- Payment reference/transaction ID
+- Date and time
+- Producer/seller associated with the product
+
+Set:
+
+Payment Status = "Paid"
+Order Status = "Accepted" or "Confirmed"
+
+IMPORTANT:
+The order confirmation notifications must ONLY be sent after successful payment verification.
+
+4. CUSTOMER EMAIL
+
+Automatically send the customer an email after successful payment.
+
+Subject:
+"Order Confirmed - Order #[ORDER_ID]"
+
+Email should contain:
+
+Hello [CUSTOMER NAME],
+
+Your order has been successfully received and your payment has been confirmed.
+
+Order ID: [ORDER_ID]
+
+Items:
+[PRODUCT LIST]
+
+Total Paid:
+[CURRENCY][TOTAL]
+
+Payment Reference:
+[PAYMENT_REFERENCE]
+
+Delivery Address:
+[DELIVERY_ADDRESS]
+
+Order Status:
+Confirmed
+
+We will keep you updated as your order progresses.
+
+Thank you for your order.
+
+[WEBSITE/COMPANY NAME]
+
+Make the email professional and mobile-friendly.
+
+5. PRODUCER/SELLER NOTIFICATION
+
+After successful payment, automatically send an email to the producer/seller associated with the product.
+
+Subject:
+"New Paid Order Received - Order #[ORDER_ID]"
+
+Email should contain:
+
+New paid order received.
+
+Order ID: [ORDER_ID]
+
+Customer:
+[CUSTOMER NAME]
+
+Phone:
+[CUSTOMER PHONE]
+
+Delivery Address:
+[DELIVERY ADDRESS]
+
+Products:
+[PRODUCT LIST]
+
+Quantity:
+[QUANTITY]
+
+Total Order Value:
+[CURRENCY][TOTAL]
+
+Payment Status:
+PAID
+
+Payment Reference:
+[PAYMENT_REFERENCE]
+
+Order Date:
+[DATE/TIME]
+
+Please prepare/process the order.
+
+IMPORTANT:
+If an order contains products from multiple producers, send each producer a notification containing ONLY the products belonging to that producer.
+
+6. SMS NOTIFICATIONS
+
+Structure the application so SMS notifications can also be enabled.
+
+Create notification functions such as:
+
+sendCustomerEmail()
+sendProducerEmail()
+sendCustomerSMS()
+sendProducerSMS()
+
+For now, if an SMS provider has not already been configured, create the SMS service abstraction but do not use fake SMS functionality.
+
+Use environment variables for SMS credentials.
+
+Do NOT hard-code API keys, passwords, email credentials, payment secrets, or SMS credentials into the code.
+
+7. EMAIL SERVICE
+
+Use a reliable transactional email provider such as Resend, SendGrid, Mailgun, or the provider already configured in the project.
+
+If the project already has an email service, use the existing service instead of creating another one.
+
+Store credentials in environment variables.
+
+Example:
+
+EMAIL_API_KEY=
+FROM_EMAIL=
+PRODUCER_NOTIFICATION_EMAIL=
+
+8. ORDER STATUS FLOW
+
+Implement the following order lifecycle:
+
+Cart
+↓
+Checkout
+↓
+Payment Initiated
+↓
+Payment Verification
+↓
+Payment Successful
+↓
+Order Created
+↓
+Customer Notification Sent
+↓
+Producer Notification Sent
+↓
+Order Processing
+↓
+Shipped/Ready for Delivery
+↓
+Delivered
+↓
+Completed
+
+If payment fails:
+
+Payment Failed
+↓
+Do NOT send "Order Accepted" notifications
+↓
+Allow customer to retry payment
+
+9. PREVENT DUPLICATE ORDERS
+
+This is very important.
+
+Payment webhooks can sometimes be sent more than once.
+
+Make the payment/order processing idempotent.
+
+If the same payment reference is received again:
+- Do not create another order.
+- Do not send duplicate customer emails.
+- Do not send duplicate producer emails.
+- Simply return a successful response to the payment provider.
+
+10. ERROR HANDLING
+
+If payment succeeds but an email fails:
+
+DO NOT reverse or mark the payment as failed.
+
+Keep the order as Paid.
+
+Record the notification failure in the database/logs and allow the notification to be retried.
+
+11. ADMIN/PRODUCER DASHBOARD
+
+If the existing website has an admin or producer dashboard, add:
+
+Orders
+- Order ID
+- Customer
+- Products
+- Amount
+- Payment status
+- Order status
+- Date
+- Payment reference
+
+Allow the producer/admin to update:
+
+Confirmed
+→ Processing
+→ Ready for Delivery
+→ Shipped
+→ Delivered
+→ Completed
+
+Do not allow the producer to manually change Payment Status from Unpaid to Paid.
+
+Payment status must come from verified payment information.
+
+12. DATABASE
+
+Check the existing database structure before making changes.
+
+Reuse existing tables/models where possible.
+
+If necessary, create/update:
+
+orders
+order_items
+payments
+notifications
+
+Suggested fields:
+
+orders:
+- id
+- customer_id
+- customer_name
+- customer_email
+- customer_phone
+- delivery_address
+- total_amount
+- currency
+- payment_status
+- order_status
+- payment_reference
+- created_at
+- updated_at
+
+order_items:
+- id
+- order_id
+- product_id
+- producer_id
+- product_name
+- quantity
+- unit_price
+- subtotal
+
+payments:
+- id
+- order_id
+- payment_reference
+- amount
+- currency
+- status
+- provider
+- verified_at
+- created_at
+
+notifications:
+- id
+- order_id
+- recipient
+- notification_type
+- status
+- sent_at
+- error_message
+
+13. SECURITY
+
+Follow secure payment practices.
+
+- Never trust payment status sent from the frontend.
+- Verify payments server-side.
+- Validate webhook signatures where supported.
+- Never expose secret API keys in frontend code.
+- Validate customer/order information.
+- Prevent users from modifying the price or total amount through the browser.
+- Calculate totals on the server.
+- Use the payment provider's verified transaction amount when confirming payment.
+- Prevent duplicate webhook processing.
+
+14. TESTING
+
+After implementing the feature, test:
+
+A. Successful payment
+→ Order created
+→ Payment marked Paid
+→ Customer receives confirmation
+→ Producer receives notification
+
+B. Failed payment
+→ Order not marked Paid
+→ No accepted-order notification
+
+C. Duplicate webhook
+→ No duplicate order
+→ No duplicate notifications
+
+D. Multiple producers in one order
+→ Each producer receives only their relevant products
+
+E. Email failure
+→ Order remains Paid
+→ Failure is logged
+→ Notification can be retried
+
+F. Customer refreshes payment success page
+→ No duplicate order or notification
+
+15. IMPORTANT DEVELOPMENT INSTRUCTION
+
+Before changing anything:
+
+1. Inspect the existing codebase.
+2. Identify the current cart system.
+3. Identify the checkout system.
+4. Identify the payment provider.
+5. Identify the database.
+6. Identify the existing authentication/user system.
+7. Identify whether email/SMS functionality already exists.
+
+Then implement this feature using the existing architecture rather than unnecessarily rebuilding the application.
+
+After implementation, tell me:
+- Which files you changed
+- Which database tables/models you changed
+- Which environment variables I need to add
+- Which payment webhook URL I need to configure
+- How to test a successful payment
+- How to test a failed payment
+- How to test email notifications
+- What SMS provider/API is required if SMS is not already configured
+
+Do not use fake payment confirmation or fake notification success messages.
