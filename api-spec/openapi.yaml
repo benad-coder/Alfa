@@ -1,0 +1,655 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 0.1.0
+  description: AlfaVogue API specification
+servers:
+  - url: /api
+    description: Base API path
+tags:
+  - name: health
+    description: Health operations
+  - name: products
+    description: Product operations
+  - name: contact
+    description: Contact inquiry operations
+  - name: gallery
+    description: Gallery operations
+  - name: orders
+    description: Checkout and customer order operations
+  - name: payments
+    description: Paystack payment operations
+  - name: admin-orders
+    description: Existing admin order operations (authentication follows the current admin surface)
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      tags: [health]
+      summary: Health check
+      description: Returns server health status
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+
+  /products:
+    get:
+      operationId: listProducts
+      tags: [products]
+      summary: List all products
+      parameters:
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+    post:
+      operationId: createProduct
+      tags: [products]
+      summary: Create a product
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+
+  /products/featured:
+    get:
+      operationId: getFeaturedProducts
+      tags: [products]
+      summary: Get featured products for homepage
+      responses:
+        "200":
+          description: Featured products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Product"
+
+  /products/{id}:
+    get:
+      operationId: getProduct
+      tags: [products]
+      summary: Get a single product
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          description: Not found
+
+  /gallery:
+    get:
+      operationId: listGalleryItems
+      tags: [gallery]
+      summary: List gallery images
+      responses:
+        "200":
+          description: Gallery items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GalleryItem"
+
+  /contact:
+    post:
+      operationId: submitContact
+      tags: [contact]
+      summary: Submit contact inquiry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContactInput"
+      responses:
+        "201":
+          description: Inquiry submitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContactInquiry"
+        "400":
+          description: Validation error
+
+  /contact/inquiries:
+    get:
+      operationId: listInquiries
+      tags: [contact]
+      summary: List all contact inquiries
+      responses:
+        "200":
+          description: All inquiries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ContactInquiry"
+
+  /orders/checkout:
+    post:
+      operationId: createCheckout
+      tags: [orders]
+      summary: Create a server-priced pending order and initialize Paystack
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutRequest"
+      responses:
+        "201":
+          description: Pending order with Paystack authorization details
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [orderNumber, paymentReference, currency, subtotalMinor, deliveryFeeMinor, totalMinor, status, paymentStatus]
+                properties:
+                  orderNumber:
+                    type: string
+                  paymentReference:
+                    type: string
+                  authorizationUrl:
+                    type: [string, "null"]
+                  accessCode:
+                    type: [string, "null"]
+                  currency:
+                    type: string
+                  subtotalMinor:
+                    type: integer
+                  deliveryFeeMinor:
+                    type: integer
+                  totalMinor:
+                    type: integer
+                  status:
+                    type: string
+                  paymentStatus:
+                    type: string
+        "400":
+          description: Invalid checkout request
+        "422":
+          description: Product is unavailable or not purchasable
+
+  /orders:
+    get:
+      operationId: listOrders
+      tags: [admin-orders]
+      summary: List orders for the existing admin surface
+      responses:
+        "200":
+          description: Orders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Order"
+
+  /orders/{orderNumber}:
+    get:
+      operationId: getOrder
+      tags: [orders]
+      summary: Get a customer-safe order view
+      parameters:
+        - $ref: "#/components/parameters/OrderNumber"
+      responses:
+        "200":
+          description: Order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          description: Not found
+
+  /orders/{orderNumber}/confirm:
+    post:
+      operationId: confirmOrderPayment
+      tags: [payments]
+      summary: Verify a Paystack transaction and finalize the order
+      parameters:
+        - $ref: "#/components/parameters/OrderNumber"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ConfirmOrderRequest"
+      responses:
+        "200":
+          description: Verified or already finalized order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderConfirmation"
+        "400":
+          description: Payment does not match the order
+        "404":
+          description: Order or payment not found
+
+  /payments/{reference}:
+    get:
+      operationId: getPaymentStatus
+      tags: [payments]
+      summary: Get payment and order status by Paystack reference
+      parameters:
+        - name: reference
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Payment status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaymentStatus"
+        "404":
+          description: Not found
+
+  /payments/paystack/webhook:
+    post:
+      operationId: receivePaystackWebhook
+      tags: [payments]
+      summary: Receive a signed Paystack webhook
+      description: Configure this exact URL in the Paystack dashboard. The signature is validated against the raw request body.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PaystackWebhookBody"
+      responses:
+        "200":
+          description: Event accepted or safely ignored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookResponse"
+        "401":
+          description: Invalid signature
+
+  /orders/{orderNumber}/status:
+    patch:
+      operationId: updateOrderStatus
+      tags: [admin-orders]
+      summary: Advance an order through the fulfillment lifecycle
+      parameters:
+        - $ref: "#/components/parameters/OrderNumber"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrderStatusRequest"
+      responses:
+        "200":
+          description: Updated order
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "409":
+          description: Invalid lifecycle transition
+
+  /orders/{orderNumber}/notifications/retry:
+    post:
+      operationId: retryOrderNotifications
+      tags: [admin-orders]
+      summary: Retry failed confirmation notifications
+      parameters:
+        - $ref: "#/components/parameters/OrderNumber"
+      responses:
+        "200":
+          description: Order with notification statuses
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+components:
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+      description: Stable key for safely retrying checkout. It may also be supplied in the request body.
+    OrderNumber:
+      name: orderNumber
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    HealthStatus:
+      type: object
+      properties:
+        status:
+          type: string
+      required:
+        - status
+
+    Product:
+      type: object
+      required: [id, name, category, description, imageUrl, isFeatured]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        category:
+          type: string
+          description: "short-sleeve | long-sleeve | essentials"
+        description:
+          type: string
+        price:
+          type: ["number", "null"]
+        imageUrl:
+          type: string
+        isFeatured:
+          type: boolean
+        producerId:
+          type: ["integer", "null"]
+        createdAt:
+          type: string
+
+    ProductInput:
+      type: object
+      required: [name, category, description, imageUrl]
+      properties:
+        name:
+          type: string
+        category:
+          type: string
+        description:
+          type: string
+        price:
+          type: ["number", "null"]
+        imageUrl:
+          type: string
+        isFeatured:
+          type: boolean
+        producerId:
+          type: ["integer", "null"]
+
+    GalleryItem:
+      type: object
+      required: [id, imageUrl, caption]
+      properties:
+        id:
+          type: integer
+        imageUrl:
+          type: string
+        caption:
+          type: string
+        category:
+          type: ["string", "null"]
+
+    ContactInput:
+      type: object
+      required: [name, email, message]
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        message:
+          type: string
+
+    ContactInquiry:
+      type: object
+      required: [id, name, email, message, createdAt]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: ["string", "null"]
+        subject:
+          type: ["string", "null"]
+        message:
+          type: string
+        createdAt:
+          type: string
+    CheckoutRequest:
+      type: object
+      required: [customer, items]
+      properties:
+        idempotencyKey:
+          type: string
+          minLength: 8
+          maxLength: 128
+        customer:
+          $ref: "#/components/schemas/CustomerDetails"
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/CheckoutItem"
+    CustomerDetails:
+      type: object
+      required: [name, email, deliveryAddress]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        email:
+          type: string
+          format: email
+        phone:
+          type: [string, "null"]
+        deliveryAddress:
+          type: string
+          minLength: 1
+        notes:
+          type: [string, "null"]
+    CheckoutItem:
+      type: object
+      required: [productId, quantity]
+      properties:
+        productId:
+          type: integer
+          minimum: 1
+        quantity:
+          type: integer
+          minimum: 1
+          maximum: 20
+    CheckoutResponse:
+      type: object
+      required: [orderNumber, paymentReference, currency, subtotalMinor, deliveryFeeMinor, totalMinor, status, paymentStatus]
+      properties:
+        orderNumber:
+          type: string
+        paymentReference:
+          type: string
+        authorizationUrl:
+          type: [string, "null"]
+        accessCode:
+          type: [string, "null"]
+        currency:
+          type: string
+        subtotalMinor:
+          type: integer
+        deliveryFeeMinor:
+          type: integer
+        totalMinor:
+          type: integer
+        status:
+          type: string
+        paymentStatus:
+          type: string
+    OrderItem:
+      type: object
+      required: [productId, productName, producerName, quantity, unitPriceMinor, lineTotalMinor, imageUrl]
+      properties:
+        productId:
+          type: [integer, "null"]
+        productName:
+          type: string
+        producerName:
+          type: string
+        quantity:
+          type: integer
+        unitPriceMinor:
+          type: integer
+        lineTotalMinor:
+          type: integer
+        imageUrl:
+          type: string
+    NotificationStatus:
+      type: object
+      required: [kind, recipient, status, attempts]
+      properties:
+        kind:
+          type: string
+        recipient:
+          type: string
+        status:
+          type: string
+        attempts:
+          type: integer
+        lastError:
+          type: [string, "null"]
+        sentAt:
+          type: [string, "null"]
+    Order:
+      type: object
+      required: [orderNumber, customerName, customerEmail, deliveryAddress, items, subtotalMinor, deliveryFeeMinor, totalMinor, currency, status, paymentStatus, paymentReference, notifications, createdAt]
+      properties:
+        orderNumber:
+          type: string
+        customerName:
+          type: string
+        customerEmail:
+          type: string
+        customerPhone:
+          type: [string, "null"]
+        deliveryAddress:
+          type: string
+        notes:
+          type: [string, "null"]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderItem"
+        subtotalMinor:
+          type: integer
+        deliveryFeeMinor:
+          type: integer
+        totalMinor:
+          type: integer
+        currency:
+          type: string
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        paymentReference:
+          type: [string, "null"]
+        notifications:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationStatus"
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+    ConfirmOrderRequest:
+      type: object
+      properties:
+        reference:
+          type: string
+    OrderConfirmation:
+      type: object
+      required: [order, alreadyFinalized]
+      properties:
+        order:
+          $ref: "#/components/schemas/Order"
+        alreadyFinalized:
+          type: boolean
+    PaymentStatus:
+      type: object
+      required: [reference, orderNumber, status, paymentStatus, orderStatus, amountMinor, currency]
+      properties:
+        reference:
+          type: string
+        orderNumber:
+          type: string
+        status:
+          type: string
+        paymentStatus:
+          type: string
+        orderStatus:
+          type: string
+        amountMinor:
+          type: integer
+        currency:
+          type: string
+    WebhookResponse:
+      type: object
+      required: [received]
+      properties:
+        received:
+          type: boolean
+        ignored:
+          type: boolean
+    PaystackWebhookBody:
+      type: object
+      additionalProperties: true
+    UpdateOrderStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [Confirmed, Processing, Ready for Delivery, Shipped, Delivered, Completed]

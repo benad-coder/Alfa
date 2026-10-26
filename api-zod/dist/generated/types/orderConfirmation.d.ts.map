@@ -1,0 +1,1 @@
+{"version":3,"file":"orderConfirmation.d.ts","sourceRoot":"","sources":["../../../src/generated/types/orderConfirmation.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,KAAK,EAAE,MAAM,SAAS,CAAC;AAErC,MAAM,WAAW,iBAAiB;IAChC,KAAK,EAAE,KAAK,CAAC;IACb,gBAAgB,EAAE,OAAO,CAAC;CAC3B"}
